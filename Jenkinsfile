@@ -23,8 +23,23 @@ pipeline {
         }
         stage('Deploy to Render') {
             steps {
-                // For Render, usually push to GitHub triggers auto-deploy
-                echo 'Push to GitHub triggers auto-deploy on Render'
+                script {
+                    echo 'Preparing for deployment to Render...'
+                    
+                    // Set production environment variables
+                    sh 'cp .env.example .env'
+                    sh 'php artisan key:generate'
+                    
+                    // Clear and cache configuration for production
+                    sh 'php artisan config:clear'
+                    sh 'php artisan cache:clear'
+                    sh 'php artisan route:cache'
+                    sh 'php artisan view:cache'
+                    
+                    // Push to GitHub triggers auto-deploy on Render
+                    echo 'Deployment will be triggered automatically on Render via GitHub webhook'
+                    echo 'Monitor deployment status at: https://dashboard.render.com'
+                }
             }
         }
     }
