@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         APP_DIR = "/var/www/laravel_render_app"
-        RENDER_DEPLOY_HOOK = "https://api.render.com/deploy/srv-YOUR_SERVICE_ID?key=YOUR_DEPLOY_KEY"
+        // Remove hardcoded URL - will use credentials instead
     }
 
     stages {
@@ -39,15 +39,23 @@ pipeline {
                     
                     // Trigger deployment on Render using Deploy Hook
                     echo 'Triggering deployment on Render using Deploy Hook...'
-                    sh '''
-                        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${RENDER_DEPLOY_HOOK}")
-                        if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
-                            echo "Deployment triggered successfully on Render (HTTP $RESPONSE)"
-                        else
-                            echo "Failed to trigger deployment on Render (HTTP $RESPONSE)"
-                            exit 1
-                        fi
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'render-service-id', variable: 'RENDER_SERVICE_ID'),
+                        string(credentialsId: 'render-deploy-key', variable: 'RENDER_DEPLOY_KEY')
+                    ]) {
+                        sh '''
+                            RENDER_DEPLOY_HOOK="https://api.render.com/deploy/srv-${RENDER_SERVICE_ID}?key=${RENDER_DEPLOY_KEY}"
+                            echo "Calling Render Deploy Hook..."
+                            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${RENDER_DEPLOY_HOOK}")
+                            if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
+                                echo "Deployment triggered successfully on Render (HTTP $RESPONSE)"
+                            else
+                                echo "Failed to trigger deployment on Render (HTTP $RESPONSE)"
+                                echo "Please verify your Render Service ID and Deploy Key in Jenkins credentials"
+                                exit 1
+                            fi
+                        '''
+                    }
                     
                     echo 'Deployment initiated on Render'
                     echo 'Monitor deployment status at: https://dashboard.render.com'
