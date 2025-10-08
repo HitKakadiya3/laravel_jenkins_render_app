@@ -3,7 +3,9 @@ pipeline {
 
     environment {
         APP_DIR = "/var/www/laravel_render_app"
-        // Remove hardcoded URL - will use credentials instead
+        // Replace these with your actual Render values
+        RENDER_SERVICE_ID = "srv-your-actual-service-id"
+        RENDER_DEPLOY_KEY = "your-actual-deploy-key"
     }
 
     stages {
@@ -40,8 +42,8 @@ pipeline {
                     // Trigger deployment on Render using Deploy Hook
                     echo 'Triggering deployment on Render using Deploy Hook...'
                     withCredentials([
-                        string(credentialsId: 'render-service-id', variable: 'RENDER_SERVICE_ID'),
-                        string(credentialsId: 'render-deploy-key', variable: 'RENDER_DEPLOY_KEY')
+                        string(credentialsId: 'RENDER_SERVICE_ID', variable: 'RENDER_SERVICE_ID'),
+                        string(credentialsId: 'RENDER_DEPLOY_KEY', variable: 'RENDER_DEPLOY_KEY')
                     ]) {
                         sh '''
                             RENDER_DEPLOY_HOOK="https://api.render.com/deploy/srv-${RENDER_SERVICE_ID}?key=${RENDER_DEPLOY_KEY}"
@@ -51,7 +53,6 @@ pipeline {
                                 echo "Deployment triggered successfully on Render (HTTP $RESPONSE)"
                             else
                                 echo "Failed to trigger deployment on Render (HTTP $RESPONSE)"
-                                echo "Please verify your Render Service ID and Deploy Key in Jenkins credentials"
                                 exit 1
                             fi
                         '''
