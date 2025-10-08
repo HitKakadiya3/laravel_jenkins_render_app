@@ -39,16 +39,20 @@ pipeline {
                     
                     // Trigger deployment on Render using Deploy Hook
                     echo 'Triggering deployment on Render using Deploy Hook... '
-                    sh '''
-                        echo "Calling Render Deploy Hook..."
-                        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.render.com/deploy/srv-d3ifkaali9vc73eq3gqg?key=P07BBjAmA_Y")
-                        if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
-                            echo "✅ Deployment triggered successfully on Render"
-                        else
-                            echo "❌ Failed to trigger deployment on Render (HTTP $RESPONSE)"
-                            exit 1
-                        fi
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'RENDER_DEPLOY_HOOK', variable: 'RENDER_DEPLOY_HOOK')
+                    ]) {
+                        sh '''
+                            echo "Calling Render Deploy Hook..."
+                            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+                            if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
+                                echo "✅ Deployment triggered successfully on Render"
+                            else
+                                echo "❌ Failed to trigger deployment on Render (HTTP $RESPONSE)"
+                                exit 1
+                            fi
+                        '''
+                    }
                     echo 'Deployment initiated on Render'
                     echo 'Monitor deployment status at: https://dashboard.render.com'
                 }
