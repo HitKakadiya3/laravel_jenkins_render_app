@@ -39,24 +39,16 @@ pipeline {
                     
                     // Trigger deployment on Render using Deploy Hook
                     echo 'Triggering deployment on Render using Deploy Hook... '
-                    withCredentials([
-                        string(credentialsId: 'RENDER_SERVICE_ID', variable: 'RENDER_SERVICE_ID'),
-                        string(credentialsId: 'RENDER_DEPLOY_KEY', variable: 'RENDER_DEPLOY_KEY')
-                    ]) {
-                        sh '''
-                            RENDER_DEPLOY_HOOK="https://api.render.com/deploy/srv-${RENDER_SERVICE_ID}?key=${RENDER_DEPLOY_KEY}"
-                            echo "Calling Render Deploy Hook..."
-                            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${RENDER_DEPLOY_HOOK}")
-                            if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
-                                echo "Deployment triggered successfully on Render (HTTP $RESPONSE)"
-                            else
-                                echo "Failed to trigger deployment on Render (HTTP $RESPONSE)"
-                                echo "Please verify your Render Service ID and Deploy Key in Jenkins credentials"
-                                exit 1
-                            fi
-                        '''
-                    }
-                    
+                    sh '''
+                        echo "Calling Render Deploy Hook..."
+                        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+                        if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
+                            echo "✅ Deployment triggered successfully on Render"
+                        else
+                            echo "❌ Failed to trigger deployment on Render (HTTP $RESPONSE)"
+                            exit 1
+                        fi
+                    '''
                     echo 'Deployment initiated on Render'
                     echo 'Monitor deployment status at: https://dashboard.render.com'
                 }
