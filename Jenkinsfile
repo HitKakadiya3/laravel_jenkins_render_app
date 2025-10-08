@@ -41,7 +41,7 @@ pipeline {
                     echo 'Triggering deployment on Render using Deploy Hook... '
                     sh '''
                         echo "Calling Render Deploy Hook..."
-                        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+                        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.render.com/deploy/srv-d3ifkaali9vc73eq3gqg?key=P07BBjAmA_Y")
                         if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
                             echo "✅ Deployment triggered successfully on Render"
                         else
