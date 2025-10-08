@@ -12,6 +12,5 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-EXPOSE 8080
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# Use Render's dynamic PORT environment variable
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
