@@ -38,7 +38,7 @@ pipeline {
                     sh 'php artisan view:cache'
                     
                     // Trigger deployment on Render using Deploy Hook
-                    echo 'Triggering deployment on Render using Deploy Hook...'
+                    echo 'Triggering deployment on Render using Deploy Hook... '
                     withCredentials([
                         string(credentialsId: 'RENDER_SERVICE_ID', variable: 'RENDER_SERVICE_ID'),
                         string(credentialsId: 'RENDER_DEPLOY_KEY', variable: 'RENDER_DEPLOY_KEY')
