@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         APP_DIR = "/var/www/laravel_render_app"
+        RENDER_DEPLOY_HOOK = "https://api.render.com/deploy/srv-YOUR_SERVICE_ID?key=YOUR_DEPLOY_KEY"
     }
 
     stages {
@@ -36,8 +37,19 @@ pipeline {
                     sh 'php artisan route:cache'
                     sh 'php artisan view:cache'
                     
-                    // Push to GitHub triggers auto-deploy on Render
-                    echo 'Deployment will be triggered automatically on Render via GitHub webhook'
+                    // Trigger deployment on Render using Deploy Hook
+                    echo 'Triggering deployment on Render using Deploy Hook...'
+                    sh '''
+                        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${RENDER_DEPLOY_HOOK}")
+                        if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
+                            echo "Deployment triggered successfully on Render (HTTP $RESPONSE)"
+                        else
+                            echo "Failed to trigger deployment on Render (HTTP $RESPONSE)"
+                            exit 1
+                        fi
+                    '''
+                    
+                    echo 'Deployment initiated on Render'
                     echo 'Monitor deployment status at: https://dashboard.render.com'
                 }
             }
