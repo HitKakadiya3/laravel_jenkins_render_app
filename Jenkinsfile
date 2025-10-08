@@ -3,9 +3,7 @@ pipeline {
 
     environment {
         APP_DIR = "/var/www/laravel_render_app"
-        // Replace these with your actual Render values
-        RENDER_SERVICE_ID = "srv-your-actual-service-id"
-        RENDER_DEPLOY_KEY = "your-actual-deploy-key"
+        // Remove hardcoded URL - will use credentials instead
     }
 
     stages {
@@ -46,36 +44,14 @@ pipeline {
                         string(credentialsId: 'RENDER_DEPLOY_KEY', variable: 'RENDER_DEPLOY_KEY')
                     ]) {
                         sh '''
-                            # Debug: Check if credentials are loaded (without showing values)
-                            echo "Service ID length: ${#RENDER_SERVICE_ID}"
-                            echo "Deploy Key length: ${#RENDER_DEPLOY_KEY}"
-                            
-                            # Verify service ID starts with 'srv-'
-                            if [[ ! "$RENDER_SERVICE_ID" =~ ^srv- ]]; then
-                                echo "ERROR: Service ID should start with 'srv-'"
-                                echo "Current Service ID format: ${RENDER_SERVICE_ID:0:4}..."
-                                exit 1
-                            fi
-                            
-                            # Try the correct Render deploy hook format
-                            RENDER_DEPLOY_HOOK="https://api.render.com/deploy/${RENDER_SERVICE_ID}?key=${RENDER_DEPLOY_KEY}"
+                            RENDER_DEPLOY_HOOK="https://api.render.com/deploy/srv-${RENDER_SERVICE_ID}?key=${RENDER_DEPLOY_KEY}"
                             echo "Calling Render Deploy Hook..."
-                            echo "URL format: https://api.render.com/deploy/srv-***?key=***"
-                            
                             RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${RENDER_DEPLOY_HOOK}")
-                            echo "Response code: $RESPONSE"
-                            
                             if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
                                 echo "Deployment triggered successfully on Render (HTTP $RESPONSE)"
-                            elif [ "$RESPONSE" -eq 404 ]; then
-                                echo "ERROR: Service not found (HTTP 404)"
-                                echo "Please verify:"
-                                echo "1. Service ID is correct and starts with 'srv-'"
-                                echo "2. Deploy key is correct"
-                                echo "3. Service exists and deploy hook is enabled"
-                                exit 1
                             else
                                 echo "Failed to trigger deployment on Render (HTTP $RESPONSE)"
+                                echo "Please verify your Render Service ID and Deploy Key in Jenkins credentials"
                                 exit 1
                             fi
                         '''
