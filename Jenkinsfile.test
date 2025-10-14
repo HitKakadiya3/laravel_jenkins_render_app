@@ -1,0 +1,188 @@
+pipeline {
+    agent any
+
+    environment {
+        CURRENT_STAGE = "Starting"
+    }
+
+    stages {
+        stage('Basic System Check') {
+            steps {
+                script { env.CURRENT_STAGE = "Basic System Check" }
+                echo '🔍 Running basic system checks...'
+                sh '''
+                    echo "=== BASIC SYSTEM INFORMATION ==="
+                    echo "Date: $(date)"
+                    echo "User: $(whoami)"
+                    echo "Groups: $(groups)"
+                    echo "Working Directory: $(pwd)"
+                    echo "Home Directory: $HOME"
+                    echo ""
+                    
+                    echo "=== ENVIRONMENT VARIABLES ==="
+                    echo "BUILD_NUMBER: ${BUILD_NUMBER}"
+                    echo "WORKSPACE: ${WORKSPACE}"
+                    echo "JOB_NAME: ${JOB_NAME}"
+                    echo ""
+                    
+                    echo "=== BASIC COMMANDS TEST ==="
+                    echo "Git version: $(git --version)"
+                    echo "Curl available: $(curl --version | head -1)"
+                    echo "Available disk space: $(df -h . | tail -1)"
+                    echo ""
+                    
+                    echo "=== FILE SYSTEM CHECK ==="
+                    echo "Current directory contents:"
+                    ls -la
+                    echo ""
+                    echo "Dockerfile exists: $([ -f Dockerfile ] && echo 'YES' || echo 'NO')"
+                    echo ""
+                    
+                    echo "✅ Basic system check completed successfully"
+                '''
+            }
+        }
+
+        stage('Docker Installation Check') {
+            steps {
+                script { env.CURRENT_STAGE = "Docker Installation Check" }
+                echo '🐳 Checking Docker installation...'
+                sh '''
+                    echo "=== DOCKER INSTALLATION CHECK ==="
+                    
+                    # Check if docker command exists
+                    if command -v docker >/dev/null 2>&1; then
+                        echo "✅ Docker command found: $(which docker)"
+                        echo "Docker version: $(docker --version)"
+                    else
+                        echo "❌ Docker command NOT found"
+                        echo "PATH: $PATH"
+                        exit 1
+                    fi
+                    
+                    echo ""
+                    echo "=== DOCKER DAEMON ACCESS TEST ==="
+                    
+                    # Test docker daemon access
+                    if docker info >/dev/null 2>&1; then
+                        echo "✅ Docker daemon is accessible"
+                        echo "Docker info:"
+                        docker info | head -10
+                    else
+                        echo "❌ Docker daemon is NOT accessible"
+                        echo "Error details:"
+                        docker info 2>&1 || true
+                        echo ""
+                        echo "Socket permissions:"
+                        ls -la /var/run/docker.sock 2>/dev/null || echo "Socket file not found"
+                        echo ""
+                        echo "Docker service status:"
+                        systemctl is-active docker 2>/dev/null || echo "Cannot check docker service status"
+                        
+                        echo ""
+                        echo "💡 REQUIRED FIXES:"
+                        echo "1. sudo usermod -aG docker jenkins"
+                        echo "2. sudo chmod 666 /var/run/docker.sock" 
+                        echo "3. sudo systemctl restart jenkins"
+                        
+                        exit 1
+                    fi
+                    
+                    echo ""
+                    echo "✅ Docker access check completed successfully"
+                '''
+            }
+        }
+
+        stage('Jenkins Credentials Check') {
+            steps {
+                script { env.CURRENT_STAGE = "Jenkins Credentials Check" }
+                echo '🔑 Checking Jenkins credentials...'
+                script {
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
+                                                       passwordVariable: 'DOCKER_PASSWORD', 
+                                                       usernameVariable: 'DOCKER_USERNAME')]) {
+                            echo "✅ DOCKER_HUB_CREDENTIALS found - Username: ${DOCKER_USERNAME}"
+                        }
+                    } catch (Exception e) {
+                        echo "❌ DOCKER_HUB_CREDENTIALS missing or invalid"
+                        echo "Error: ${e.getMessage()}"
+                        echo "💡 Add credential with ID: DOCKER_HUB_CREDENTIALS (Username with password)"
+                        error("Missing Docker Hub credentials")
+                    }
+                    
+                    try {
+                        withCredentials([string(credentialsId: 'RENDER_DEPLOY_HOOK', variable: 'RENDER_DEPLOY_HOOK')]) {
+                            echo "✅ RENDER_DEPLOY_HOOK found (${RENDER_DEPLOY_HOOK.length()} characters)"
+                        }
+                    } catch (Exception e) {
+                        echo "❌ RENDER_DEPLOY_HOOK missing or invalid"
+                        echo "Error: ${e.getMessage()}"
+                        echo "💡 Add credential with ID: RENDER_DEPLOY_HOOK (Secret text)"
+                        error("Missing Render deploy hook")
+                    }
+                }
+            }
+        }
+
+        stage('Docker Test Build') {
+            steps {
+                script { env.CURRENT_STAGE = "Docker Test Build" }
+                echo '🧪 Testing basic Docker functionality...'
+                sh '''
+                    echo "=== DOCKER TEST BUILD ==="
+                    
+                    # Test basic docker functionality
+                    echo "Testing docker with hello-world image..."
+                    if docker run --rm hello-world; then
+                        echo "✅ Docker basic functionality works"
+                    else
+                        echo "❌ Docker basic test failed"
+                        exit 1
+                    fi
+                    
+                    echo ""
+                    echo "✅ Docker test completed successfully"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Test pipeline cleanup...'
+            sh 'echo "Test pipeline completed at $(date)"'
+        }
+        success {
+            echo '✅ All tests passed! Your system is ready for the full pipeline.'
+            echo '''
+            🎉 SUCCESS SUMMARY:
+            ==================
+            ✅ System commands work
+            ✅ Docker is accessible  
+            ✅ Jenkins credentials configured
+            ✅ Basic Docker functionality confirmed
+            
+            💡 You can now run the full pipeline with confidence!
+            '''
+        }
+        failure {
+            echo '❌ Test pipeline failed!'
+            script {
+                sh '''
+                    echo "=============================================="
+                    echo "❌ TEST FAILED at $(date)"
+                    echo "Failed Stage: ${CURRENT_STAGE}"
+                    echo "=============================================="
+                    echo ""
+                    echo "🔍 This test helps identify the exact problem."
+                    echo "The failure occurred in stage: ${CURRENT_STAGE}"
+                    echo ""
+                    echo "Check the error details above for the specific issue."
+                    echo "Fix the problem in this stage before running the full pipeline."
+                '''
+            }
+        }
+    }
+}

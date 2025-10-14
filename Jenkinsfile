@@ -10,18 +10,24 @@ pipeline {
         
         // Application configuration
         APP_NAME = "laravel-jenkins-render-app"
+        
+        // Error tracking
+        CURRENT_STAGE = "Starting"
     }
 
     stages {
         stage('Checkout') {
             steps {
+                script { env.CURRENT_STAGE = "Checkout" }
                 echo '🔄 Checking out source code...'
                 git branch: 'main', url: 'https://github.com/HitKakadiya3/laravel_jenkins_render_app.git'
+                echo '✅ Checkout completed successfully'
             }
         }
         
         stage('Pre-flight Checks') {
             steps {
+                script { env.CURRENT_STAGE = "Pre-flight Checks" }
                 echo '🔍 Running pre-flight checks...'
                 script {
                     sh '''
@@ -84,6 +90,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
+                script { env.CURRENT_STAGE = "Docker Build" }
                 echo '🐳 Building Docker image...'
                 script {
                     withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
@@ -308,18 +315,65 @@ pipeline {
                 sh '''
                     echo "=============================================="
                     echo "❌ BUILD FAILED at $(date)"
+                    echo "Failed Stage: ${CURRENT_STAGE}"
+                    echo "Build Number: ${BUILD_NUMBER}"
                     echo "=============================================="
                     echo ""
-                    echo "🔍 Troubleshooting steps:"
-                    echo "1. Check Docker permissions: sudo usermod -aG docker jenkins"
-                    echo "2. Check credentials in Jenkins: DOCKER_HUB_CREDENTIALS, RENDER_DEPLOY_HOOK"
-                    echo "3. Verify Docker is running: sudo systemctl status docker"
-                    echo "4. Check Jenkins logs above for specific error details"
+                    echo "🔍 Stage-specific troubleshooting:"
+                    case "${CURRENT_STAGE}" in
+                        "Checkout")
+                            echo "❌ Git checkout failed"
+                            echo "💡 Check: Git repository access, network connectivity"
+                            echo "💡 Verify: Repository URL and branch exist"
+                            ;;
+                        "Pre-flight Checks")
+                            echo "❌ Pre-flight checks failed"
+                            echo "💡 Most likely: Docker permission issues"
+                            echo "💡 Fix: sudo usermod -aG docker jenkins"
+                            echo "💡 Fix: sudo chmod 666 /var/run/docker.sock"
+                            echo "💡 Fix: sudo systemctl restart jenkins"
+                            ;;
+                        "Docker Build")
+                            echo "❌ Docker build failed"
+                            echo "💡 Check: Dockerfile syntax and dependencies"
+                            echo "💡 Check: Docker daemon permissions"
+                            echo "💡 Check: Available disk space"
+                            ;;
+                        "Docker Test")
+                            echo "❌ Docker testing failed"
+                            echo "💡 Check: Container startup issues"
+                            echo "💡 Check: Port conflicts (8081)"
+                            echo "💡 Check: Application configuration"
+                            ;;
+                        "Docker Push")
+                            echo "❌ Docker push failed"
+                            echo "💡 Check: Docker Hub credentials"
+                            echo "💡 Check: Network connectivity to Docker Hub"
+                            echo "💡 Verify: DOCKER_HUB_CREDENTIALS in Jenkins"
+                            ;;
+                        "Deploy to Render")
+                            echo "❌ Render deployment failed"
+                            echo "💡 Check: Render deploy hook URL"
+                            echo "💡 Check: RENDER_DEPLOY_HOOK credential in Jenkins"
+                            echo "💡 Check: Render service status"
+                            ;;
+                        *)
+                            echo "❌ Unknown stage failure: ${CURRENT_STAGE}"
+                            ;;
+                    esac
                     echo ""
-                    echo "🆘 Common fixes:"
+                    echo "🔧 General troubleshooting steps:"
+                    echo "1. Check Jenkins console output above for specific errors"
+                    echo "2. Verify Docker permissions: sudo usermod -aG docker jenkins"
+                    echo "3. Check credentials: DOCKER_HUB_CREDENTIALS, RENDER_DEPLOY_HOOK"
+                    echo "4. Verify services: sudo systemctl status docker jenkins"
+                    echo ""
+                    echo "🆘 Quick fixes to try:"
                     echo "   sudo chmod 666 /var/run/docker.sock"
                     echo "   sudo systemctl restart jenkins"
+                    echo "   ./diagnose-pipeline-failure.sh"
                     echo ""
+                    echo "📋 To get help, share the error from the failed stage above"
                 '''
             }
         }
