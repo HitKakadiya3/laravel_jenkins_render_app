@@ -24,12 +24,34 @@ pipeline {
             steps {
                 echo '⚙️ Setting up build environment...'
                 script {
-                    // Display build information
+                    // Display build information and check Docker access
                     sh '''
+                        echo "=== Build Information ==="
                         echo "Build Number: ${BUILD_NUMBER}"
                         echo "Git Commit: $(git rev-parse --short HEAD)"
                         echo "Git Branch: $(git branch --show-current)"
+                        echo "User: $(whoami)"
+                        echo "Groups: $(groups)"
+                        
+                        echo "=== Docker Environment ==="
                         echo "Docker Version: $(docker --version)"
+                        
+                        # Check Docker daemon access
+                        if docker info > /dev/null 2>&1; then
+                            echo "✅ Docker daemon access: OK"
+                            echo "Docker Root Dir: $(docker info --format '{{.DockerRootDir}}')"
+                        else
+                            echo "❌ Docker daemon access: FAILED"
+                            echo "💡 Common fixes:"
+                            echo "   sudo usermod -aG docker jenkins"
+                            echo "   sudo chmod 666 /var/run/docker.sock"
+                            echo "   sudo systemctl restart jenkins"
+                            echo ""
+                            echo "⚠️  Pipeline will continue but Docker stages may fail"
+                        fi
+                        
+                        # Check socket permissions
+                        ls -la /var/run/docker.sock || echo "Cannot access docker socket info"
                     '''
                 }
             }
@@ -150,11 +172,32 @@ pipeline {
         always {
             echo '🧹 Cleaning up...'
             script {
-                // Clean up Docker images to save space
+                // Clean up Docker images to save space - with error handling
                 sh '''
-                    echo "Cleaning up Docker images..."
-                    docker system prune -f
-                    echo "✅ Cleanup completed"
+                    echo "Attempting Docker cleanup..."
+                    
+                    # Check if we can access Docker
+                    if docker version > /dev/null 2>&1; then
+                        echo "Docker access confirmed - cleaning up images..."
+                        
+                        # Remove dangling images
+                        if docker images -f "dangling=true" -q | wc -l | grep -v "^0$"; then
+                            docker rmi $(docker images -f "dangling=true" -q) 2>/dev/null || echo "No dangling images to remove"
+                        fi
+                        
+                        # System prune with error handling
+                        docker system prune -f 2>/dev/null || echo "⚠️ Docker system prune failed - continuing anyway"
+                        
+                        echo "✅ Docker cleanup completed"
+                    else
+                        echo "⚠️ Cannot access Docker daemon - skipping Docker cleanup"
+                        echo "💡 This is usually due to permissions. Pipeline will continue normally."
+                        
+                        # Alternative cleanup - remove build artifacts
+                        echo "Performing alternative cleanup..."
+                        rm -rf .docker-tmp/ 2>/dev/null || true
+                        echo "✅ Alternative cleanup completed"
+                    fi
                 '''
             }
         }
