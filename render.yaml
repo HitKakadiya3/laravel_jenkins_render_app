@@ -3,8 +3,12 @@ services:
     name: laravel-jenkins-render-app
     runtime: docker
     plan: starter
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    # Use pre-built Docker image from registry instead of building from source
+    image:
+      url: docker.io/your-dockerhub-username/laravel-jenkins-render-app:latest
+    # Alternative: Build from source (comment out image above and uncomment below)
+    # dockerfilePath: ./Dockerfile
+    # dockerContext: .
     envVars:
       - key: APP_ENV
         value: production
@@ -21,12 +25,18 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: info
+      - key: DB_CONNECTION
+        value: sqlite
+      - key: DB_DATABASE
+        value: /var/www/html/database/database.sqlite
       - key: SESSION_DRIVER
-        value: cookie
-      - key: CACHE_DRIVER
-        value: file
+        value: database
+      - key: SESSION_LIFETIME
+        value: 120
+      - key: CACHE_STORE
+        value: database
       - key: QUEUE_CONNECTION
-        value: sync
+        value: database
     buildCommand: echo "Docker build handles the build process"
     startCommand: /usr/local/bin/docker-start.sh
     healthCheckPath: /

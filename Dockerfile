@@ -14,9 +14,12 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     curl \
     nginx \
+    sqlite3 \
+    libsqlite3-dev \
     && docker-php-ext-install \
     pdo \
     pdo_mysql \
+    pdo_sqlite \
     zip \
     mbstring \
     exif \
@@ -46,11 +49,18 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Copy environment file
-COPY .env.example .env
+# Copy production environment file
+COPY .env.production .env
 
-# Generate application key and optimize Laravel
+# Create database directory and file
+RUN mkdir -p /var/www/html/database \
+    && touch /var/www/html/database/database.sqlite \
+    && chmod 664 /var/www/html/database/database.sqlite \
+    && chown www-data:www-data /var/www/html/database/database.sqlite
+
+# Generate application key and setup database
 RUN php artisan key:generate \
+    && php artisan migrate --force \
     && php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache

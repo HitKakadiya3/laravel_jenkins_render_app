@@ -82,10 +82,25 @@ If your Laravel app uses a database:
 With the render.yaml file, your app will automatically redeploy when you push changes to your connected Git repository.
 
 ## Troubleshooting
+
+### Common Issues:
+
+#### 1. SQLite Database Error
+If you see "Database file does not exist" error:
+- The updated Dockerfile now automatically creates the SQLite database
+- The startup script ensures the database exists and runs migrations
+- Redeploy your application with the updated configuration
+
+#### 2. General Deployment Issues
 - Check Render logs in the dashboard if deployment fails
 - Ensure all required environment variables are set
 - Verify your Docker image is publicly accessible on Docker Hub
 - Check that port 10000 is properly exposed in your Dockerfile
+
+#### 3. Database Issues
+- SQLite database is created automatically in the container
+- Database migrations run automatically on container startup
+- For persistent data, consider upgrading to Render's PostgreSQL service
 
 ## Important Notes
 - The app runs on port 10000 (Render's default)
