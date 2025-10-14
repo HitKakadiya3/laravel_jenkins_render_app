@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: laravel-jenkins-render-app
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        fromService:
+          type: web
+          name: laravel-jenkins-render-app
+          property: host
+      - key: APP_KEY
+        generateValue: true
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: info
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+    buildCommand: echo "Docker build handles the build process"
+    startCommand: /usr/local/bin/docker-start.sh
+    healthCheckPath: /
+    autoDeploy: true
+    disk:
+      name: laravel-storage
+      mountPath: /var/www/html/storage
+      sizeGB: 1

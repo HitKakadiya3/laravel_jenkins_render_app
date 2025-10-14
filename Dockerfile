@@ -1,23 +1,66 @@
-# Use PHP 8.2 FPM
-FROM php:8.2-fpm
+# Use PHP 8.2 CLI for a lighter image suitable for web services
+FROM php:8.2-cli
 
-WORKDIR /var/www
+# Set working directory
+WORKDIR /var/www/html
 
-# Install dependencies
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev curl \
-    && docker-php-ext-install pdo pdo_mysql zip mbstring exif pcntl bcmath gd
+    git \
+    unzip \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    curl \
+    nginx \
+    && docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    zip \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install composer
+# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy project files
-COPY . .
+# Copy composer files first for better caching
+COPY composer.json composer.lock* ./
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
-EXPOSE 8080
+# Copy application files
+COPY . .
 
-# Start Laravel server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# Complete composer installation and optimize for production
+RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
+
+# Set proper permissions for Laravel
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
+
+# Copy environment file
+COPY .env.example .env
+
+# Generate application key and optimize Laravel
+RUN php artisan key:generate \
+    && php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+# Expose port that Render expects
+EXPOSE 10000
+
+# Create a startup script
+COPY docker-start.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-start.sh
+
+# Use the startup script
+CMD ["/usr/local/bin/docker-start.sh"]
