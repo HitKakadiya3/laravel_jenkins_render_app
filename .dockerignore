@@ -7,7 +7,7 @@ Dockerfile
 .dockerignore
 docker-compose*
 
-# Development files
+# Development environment files (but allow .env.production)
 .env.local
 .env.development
 .env.testing

@@ -55,8 +55,14 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/bootstrap/cache \
     && chmod -R 755 /var/www/html/public
 
-# Copy production environment file
-COPY .env.production .env
+# Create production environment file from example
+RUN cp .env.example .env \
+    && sed -i 's/APP_NAME=Laravel/APP_NAME="Laravel Jenkins Render App"/' .env \
+    && sed -i 's/APP_ENV=local/APP_ENV=production/' .env \
+    && sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env \
+    && sed -i 's|APP_URL=http://localhost|APP_URL=https://laravel-jenkins-render-app-1.onrender.com|' .env \
+    && sed -i 's/LOG_CHANNEL=stack/LOG_CHANNEL=stderr/' .env \
+    && sed -i 's/LOG_LEVEL=debug/LOG_LEVEL=info/' .env
 
 # Create database directory and file
 RUN mkdir -p /var/www/html/database \
