@@ -4,6 +4,32 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 
+// Health check route - minimal dependencies
+Route::get('/health', function () {
+    try {
+        return response()->json([
+            'status' => 'ok',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'app_name' => config('app.name', 'Laravel'),
+            'app_env' => config('app.env', 'unknown'),
+            'php_version' => PHP_VERSION,
+            'laravel_version' => app()->version()
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ], 500);
+    }
+});
+
+// Simple test route without any dependencies
+Route::get('/test', function () {
+    return 'Laravel is working! Time: ' . date('Y-m-d H:i:s');
+});
+
 // Public routes
 Route::get('/', function () {
     return view('welcome');
