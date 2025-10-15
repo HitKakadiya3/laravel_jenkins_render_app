@@ -38,10 +38,35 @@ echo "=== .env File Content (relevant lines) ==="
 grep -E '^(APP_|SESSION_|CACHE_|DB_|QUEUE_)' .env || echo "No relevant config found"
 echo "=========================================="
 
+# Test Laravel configuration reading BEFORE clearing cache
+echo "Testing Laravel configuration (before cache clear)..."
+php artisan tinker --execute="echo 'Session Driver: ' . config('session.driver'); echo 'Cache Store: ' . config('cache.default');" || echo "Config test failed"
+
 # Clear any cached configuration
 echo "Clearing cached configuration..."
 php artisan config:clear || echo "Config clear failed"
 php artisan cache:clear || echo "Cache clear failed"
+
+# Force clear all cache files manually
+rm -rf storage/framework/cache/data/* 2>/dev/null || true
+rm -rf storage/framework/sessions/* 2>/dev/null || true  
+rm -rf storage/framework/views/* 2>/dev/null || true
+rm -rf bootstrap/cache/* 2>/dev/null || true
+
+# Explicitly override session driver to file
+echo "Forcing session driver to file..."
+export SESSION_DRIVER=file
+export CACHE_STORE=file
+export QUEUE_CONNECTION=sync
+
+# Verify the environment variables are set
+echo "Environment variable check:"
+echo "  SESSION_DRIVER: $SESSION_DRIVER"
+echo "  CACHE_STORE: $CACHE_STORE"
+
+# Test Laravel configuration reading AFTER clearing cache and setting env vars
+echo "Testing Laravel configuration (after cache clear and env override)..."
+php artisan tinker --execute="echo 'Session Driver: ' . config('session.driver'); echo 'Cache Store: ' . config('cache.default');" || echo "Config test failed"
 
 # Test route loading
 echo "Testing route loading..."

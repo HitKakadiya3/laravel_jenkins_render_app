@@ -75,6 +75,14 @@ RUN cp .env.example .env \
 # Generate application key only (no config caching to allow runtime env vars)
 RUN php artisan key:generate
 
+# Clear any existing cached configuration files
+RUN rm -rf storage/framework/cache/data/* \
+    && rm -rf storage/framework/sessions/* \
+    && rm -rf storage/framework/views/* \
+    && rm -rf bootstrap/cache/config.php \
+    && rm -rf bootstrap/cache/routes.php \
+    && rm -rf bootstrap/cache/services.php
+
 # Expose port that Render expects (Apache runs on 80, but we'll configure it for Render)
 EXPOSE 10000
 
