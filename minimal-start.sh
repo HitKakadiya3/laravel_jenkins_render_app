@@ -55,4 +55,15 @@ chmod -R 775 storage bootstrap/cache
 
 # Start Apache
 echo "Starting Apache on port 10000..."
+echo "Checking Apache configuration..."
+apache2ctl configtest
+
+echo "Verifying Apache ports configuration..."
+grep -n "Listen" /etc/apache2/ports.conf
+grep -n "VirtualHost" /etc/apache2/sites-available/000-default.conf
+
+echo "Checking if files exist in public directory..."
+ls -la /var/www/html/public/
+
+echo "Starting Apache in foreground..."
 exec apache2-foreground
