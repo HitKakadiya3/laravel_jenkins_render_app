@@ -175,7 +175,7 @@ pipeline {
                     withCredentials([string(credentialsId: 'RENDER_DEPLOY_HOOK', variable: 'RENDER_DEPLOY_HOOK')]) {
                         sh '''
                             echo "Triggering deployment on Render..."
-                            echo "Deploy Hook URL configured: ${RENDER_DEPLOY_HOOK:0:50}..."
+                            echo "Deploy Hook URL: [configured]"
                             
                             # Call the webhook with detailed error handling
                             RESPONSE=$(curl -s -o /tmp/render_response.txt -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
