@@ -35,19 +35,16 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Copy composer files first for better caching
-COPY composer.json composer.lock* ./
-
-# Install PHP dependencies
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+COPY composer.json composer.lock ./
 
 # Copy application files
 COPY . .
 
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
 # Install npm dependencies and build frontend assets
 RUN npm install && npm run build
-
-# Complete composer installation and optimize for production
-RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
 
 # Configure Apache VirtualHost
 RUN echo '<VirtualHost *:80>\n    DocumentRoot /var/www/html/public\n    <Directory /var/www/html/public>\n        AllowOverride All\n        Require all granted\n    </Directory>\n    ErrorLog ${APACHE_LOG_DIR}/error.log\n    CustomLog ${APACHE_LOG_DIR}/access.log combined\n</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
