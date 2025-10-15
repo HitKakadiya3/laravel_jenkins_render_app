@@ -65,16 +65,15 @@ RUN cp .env.example .env \
     && sed -i 's|APP_URL=http://localhost|APP_URL=https://laravel-jenkins-render-app-1.onrender.com|' .env \
     && sed -i 's/LOG_CHANNEL=stack/LOG_CHANNEL=stderr/' .env \
     && sed -i 's/LOG_LEVEL=debug/LOG_LEVEL=info/' .env \
-    && sed -i 's/# DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env \
-    && sed -i 's/QUEUE_CONNECTION=database/QUEUE_CONNECTION=sync/' .env
+    && sed -i 's/SESSION_DRIVER=database/SESSION_DRIVER=file/' .env \
+    && sed -i 's/CACHE_STORE=database/CACHE_STORE=file/' .env \
+    && sed -i 's/QUEUE_CONNECTION=database/QUEUE_CONNECTION=sync/' .env \
+    && echo "# Database temporarily disabled" >> .env
 
-# Note: Using PostgreSQL database - no local database file needed
+# Note: Using file-based sessions and cache for simplicity
 
-# Generate application key and cache for production (skip migrations - done at runtime)
-RUN php artisan key:generate \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+# Generate application key only (no config caching to allow runtime env vars)
+RUN php artisan key:generate
 
 # Expose port that Render expects (Apache runs on 80, but we'll configure it for Render)
 EXPOSE 10000

@@ -33,6 +33,11 @@ else
     exit 1
 fi
 
+# Show actual .env file content for debugging
+echo "=== .env File Content (relevant lines) ==="
+grep -E '^(APP_|SESSION_|CACHE_|DB_|QUEUE_)' .env || echo "No relevant config found"
+echo "=========================================="
+
 # Clear any cached configuration
 echo "Clearing cached configuration..."
 php artisan config:clear || echo "Config clear failed"
