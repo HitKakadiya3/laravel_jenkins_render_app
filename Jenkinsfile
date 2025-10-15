@@ -62,19 +62,7 @@ pipeline {
                         echo "Checking if required credentials are available..."
                     '''
                     
-                    // Check if credentials exist
-                    try {
-                        withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
-                                                       passwordVariable: 'DOCKER_PASSWORD', 
-                                                       usernameVariable: 'DOCKER_USERNAME')]) {
-                            echo "✅ Docker Hub credentials available: ${DOCKER_USERNAME}"
-                        }
-                    } catch (Exception e) {
-                        echo "❌ Docker Hub credentials missing or invalid"
-                        echo "💡 Add credential with ID: DOCKER_HUB_CREDENTIALS"
-                        error("Missing Docker Hub credentials")
-                    }
-                    
+                    // Check if Render deploy hook exists
                     try {
                         withCredentials([string(credentialsId: 'RENDER_DEPLOY_HOOK', variable: 'RENDER_DEPLOY_HOOK')]) {
                             echo "✅ Render deploy hook available"
@@ -93,40 +81,36 @@ pipeline {
                 script { env.CURRENT_STAGE = "Docker Build" }
                 echo '🐳 Building Docker image...'
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
-                                                   passwordVariable: 'DOCKER_PASSWORD', 
-                                                   usernameVariable: 'DOCKER_USERNAME')]) {
-                        sh '''
-                            echo "Building Docker image: ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG}"
-                            
-                            # Check if Dockerfile exists
-                            if [ ! -f Dockerfile ]; then
-                                echo "❌ Dockerfile not found!"
-                                exit 1
-                            fi
-                            
-                            # Build the Docker image with error handling
-                            echo "Starting Docker build..."
-                            if docker build -t ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG} .; then
-                                echo "✅ Docker build successful for tag: ${BUILD_NUMBER_TAG}"
-                            else
-                                echo "❌ Docker build failed!"
-                                exit 1
-                            fi
-                            
-                            # Tag as latest
-                            if docker tag ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG} ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${LATEST_TAG}; then
-                                echo "✅ Tagged as latest"
-                            else
-                                echo "❌ Failed to tag as latest"
-                                exit 1
-                            fi
-                            
-                            # Show built images
-                            echo "Built images:"
-                            docker images | grep ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME} || echo "No images found matching pattern"
-                        '''
-                    }
+                    sh '''
+                        echo "Building Docker image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG}"
+                        
+                        # Check if Dockerfile exists
+                        if [ ! -f Dockerfile ]; then
+                            echo "❌ Dockerfile not found!"
+                            exit 1
+                        fi
+                        
+                        # Build the Docker image with error handling
+                        echo "Starting Docker build..."
+                        if docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG} .; then
+                            echo "✅ Docker build successful for tag: ${BUILD_NUMBER_TAG}"
+                        else
+                            echo "❌ Docker build failed!"
+                            exit 1
+                        fi
+                        
+                        # Tag as latest
+                        if docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG} ${DOCKER_IMAGE_NAME}:${LATEST_TAG}; then
+                            echo "✅ Tagged as latest"
+                        else
+                            echo "❌ Failed to tag as latest"
+                            exit 1
+                        fi
+                        
+                        # Show built images
+                        echo "Built images:"
+                        docker images | grep ${DOCKER_IMAGE_NAME} || echo "No images found matching pattern"
+                    '''
                 }
             }
         }
@@ -141,18 +125,15 @@ pipeline {
             steps {
                 echo '🧪 Testing Docker image...'
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
-                                                   passwordVariable: 'DOCKER_PASSWORD', 
-                                                   usernameVariable: 'DOCKER_USERNAME')]) {
-                        sh '''
-                            echo "Testing Docker image startup..."
-                            
-                            # Use a different port to avoid conflicts
-                            TEST_PORT=8081
-                            
-                            # Run container in background for testing
-                            echo "Starting test container on port $TEST_PORT..."
-                            CONTAINER_ID=$(docker run -d -p $TEST_PORT:10000 ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG})
+                    sh '''
+                        echo "Testing Docker image startup..."
+                        
+                        # Use a different port to avoid conflicts
+                        TEST_PORT=8081
+                        
+                        # Run container in background for testing
+                        echo "Starting test container on port $TEST_PORT..."
+                        CONTAINER_ID=$(docker run -d -p $TEST_PORT:10000 ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG})
                             
                             if [ -z "$CONTAINER_ID" ]; then
                                 echo "❌ Failed to start container"
@@ -176,57 +157,13 @@ pipeline {
                                 echo "⚠️ Application health check failed, but continuing (container might still be starting)"
                             fi
                             
-                            # Clean up test container
-                            echo "Cleaning up test container..."
-                            docker stop $CONTAINER_ID >/dev/null 2>&1 || true
-                            docker rm $CONTAINER_ID >/dev/null 2>&1 || true
-                            
-                            echo "✅ Docker image test completed"
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                echo '📤 Pushing Docker image to registry...'
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
-                                                   passwordVariable: 'DOCKER_PASSWORD', 
-                                                   usernameVariable: 'DOCKER_USERNAME')]) {
-                        sh '''
-                            echo "Logging into Docker Hub..."
-                            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                            
-                            if [ $? -eq 0 ]; then
-                                echo "✅ Docker Hub login successful"
-                            else
-                                echo "❌ Docker Hub login failed"
-                                exit 1
-                            fi
-                            
-                            echo "Pushing Docker images..."
-                            
-                            # Push versioned image
-                            if docker push ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG}; then
-                                echo "✅ Pushed ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG}"
-                            else
-                                echo "❌ Failed to push versioned image"
-                                exit 1
-                            fi
-                            
-                            # Push latest image
-                            if docker push ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${LATEST_TAG}; then
-                                echo "✅ Pushed ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${LATEST_TAG}"
-                            else
-                                echo "❌ Failed to push latest image"
-                                exit 1
-                            fi
-                            
-                            echo "✅ All Docker images pushed successfully"
-                        '''
-                    }
+                        # Clean up test container
+                        echo "Cleaning up test container..."
+                        docker stop $CONTAINER_ID >/dev/null 2>&1 || true
+                        docker rm $CONTAINER_ID >/dev/null 2>&1 || true
+                        
+                        echo "✅ Docker image test completed"
+                    '''
                 }
             }
         }
@@ -291,22 +228,17 @@ pipeline {
         success {
             echo '🎉 Pipeline completed successfully!'
             script {
-                withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CREDENTIALS', 
-                                               passwordVariable: 'DOCKER_PASSWORD', 
-                                               usernameVariable: 'DOCKER_USERNAME')]) {
-                    echo """
-                    🎉 Deployment Summary:
-                    ==========================================
-                    ✅ Docker Image: ${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG}
-                    ✅ Registry: Docker Hub  
-                    ✅ Render App: https://laravel-jenkins-render-app-1.onrender.com/
-                    ✅ Build Number: ${BUILD_NUMBER}
+                echo """
+                🎉 Deployment Summary:
+                ==========================================
+                ✅ Docker Image: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER_TAG}
+                ✅ Local Build: Successful
+                ✅ Render App: https://laravel-jenkins-render-app-1.onrender.com/
+                ✅ Build Number: ${BUILD_NUMBER}
                     
-                    🔗 Check your app: https://laravel-jenkins-render-app-1.onrender.com/
-                    🔗 Docker Hub: https://hub.docker.com/r/${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}
-                    🔗 Render Dashboard: https://dashboard.render.com
-                    """
-                }
+                🔗 Check your app: https://laravel-jenkins-render-app-1.onrender.com/
+                🔗 Render Dashboard: https://dashboard.render.com
+                """
             }
         }
         failure {
@@ -345,12 +277,6 @@ pipeline {
                             echo "💡 Check: Port conflicts (8081)"
                             echo "💡 Check: Application configuration"
                             ;;
-                        "Docker Push")
-                            echo "❌ Docker push failed"
-                            echo "💡 Check: Docker Hub credentials"
-                            echo "💡 Check: Network connectivity to Docker Hub"
-                            echo "💡 Verify: DOCKER_HUB_CREDENTIALS in Jenkins"
-                            ;;
                         "Deploy to Render")
                             echo "❌ Render deployment failed"
                             echo "💡 Check: Render deploy hook URL"
@@ -365,7 +291,7 @@ pipeline {
                     echo "🔧 General troubleshooting steps:"
                     echo "1. Check Jenkins console output above for specific errors"
                     echo "2. Verify Docker permissions: sudo usermod -aG docker jenkins"
-                    echo "3. Check credentials: DOCKER_HUB_CREDENTIALS, RENDER_DEPLOY_HOOK"
+                    echo "3. Check credentials: RENDER_DEPLOY_HOOK"
                     echo "4. Verify services: sudo systemctl status docker jenkins"
                     echo ""
                     echo "🆘 Quick fixes to try:"
