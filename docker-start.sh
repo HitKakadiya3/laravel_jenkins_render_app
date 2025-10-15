@@ -16,6 +16,6 @@ php artisan migrate --force
 php artisan config:clear
 php artisan config:cache
 
-# Start PHP built-in server on port 10000 (Render's default)
-echo "Starting Laravel application on port 10000..."
-exec php artisan serve --host=0.0.0.0 --port=10000
+# Start Apache in foreground
+echo "Starting Apache server on port 10000..."
+exec apache2-foreground
