@@ -90,9 +90,9 @@ EXPOSE 10000
 RUN sed -i 's/Listen 80/Listen 10000/' /etc/apache2/ports.conf && \
     sed -i 's/<VirtualHost \*:80>/<VirtualHost *:10000>/' /etc/apache2/sites-available/000-default.conf
 
-# Create a startup script
-COPY docker-start.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-start.sh
+# Create a minimal startup script
+COPY minimal-start.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/minimal-start.sh
 
-# Use Apache's standard foreground command
-CMD ["/usr/local/bin/docker-start.sh"]
+# Use the minimal startup script
+CMD ["/usr/local/bin/minimal-start.sh"]
