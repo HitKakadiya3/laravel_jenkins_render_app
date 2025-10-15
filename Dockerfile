@@ -65,9 +65,8 @@ RUN cp .env.example .env \
     && sed -i 's|APP_URL=http://localhost|APP_URL=https://laravel-jenkins-render-app-1.onrender.com|' .env \
     && sed -i 's/LOG_CHANNEL=stack/LOG_CHANNEL=stderr/' .env \
     && sed -i 's/LOG_LEVEL=debug/LOG_LEVEL=info/' .env \
-    && echo "DB_CONNECTION=pgsql" >> .env \
-    && echo "SESSION_DRIVER=database" >> .env \
-    && echo "CACHE_DRIVER=database" >> .env
+    && sed -i 's/# DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env \
+    && sed -i 's/QUEUE_CONNECTION=database/QUEUE_CONNECTION=sync/' .env
 
 # Note: Using PostgreSQL database - no local database file needed
 
