@@ -13,14 +13,13 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     curl \
-    sqlite3 \
-    libsqlite3-dev \
+    libpq-dev \
     nodejs \
     npm \
     && docker-php-ext-install \
     pdo \
     pdo_mysql \
-    pdo_sqlite \
+    pdo_pgsql \
     zip \
     mbstring \
     exif \
@@ -64,15 +63,10 @@ RUN cp .env.example .env \
     && sed -i 's/LOG_CHANNEL=stack/LOG_CHANNEL=stderr/' .env \
     && sed -i 's/LOG_LEVEL=debug/LOG_LEVEL=info/' .env
 
-# Create database directory and file
-RUN mkdir -p /var/www/html/database \
-    && touch /var/www/html/database/database.sqlite \
-    && chmod 664 /var/www/html/database/database.sqlite \
-    && chown www-data:www-data /var/www/html/database/database.sqlite
+# Note: Using PostgreSQL database - no local database file needed
 
-# Generate application key and setup database
+# Generate application key and cache for production (skip migrations - done at runtime)
 RUN php artisan key:generate \
-    && php artisan migrate --force \
     && php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache
