@@ -30,15 +30,15 @@ services:
       - key: DB_DATABASE
         value: /var/www/html/database/database.sqlite
       - key: SESSION_DRIVER
-        value: database
+        value: file
       - key: SESSION_LIFETIME
         value: 120
       - key: CACHE_STORE
-        value: database
+        value: file
       - key: QUEUE_CONNECTION
-        value: database
+        value: sync
     buildCommand: echo "Docker build handles the build process"
-    startCommand: /usr/local/bin/docker-start.sh
+    startCommand: /usr/local/bin/minimal-start.sh
     healthCheckPath: /
     autoDeploy: true
     disk:
