@@ -194,7 +194,8 @@ pipeline {
                             else
                                 echo "❌ Failed to trigger deployment on Render (HTTP $RESPONSE)"
                                 echo "💡 Check your Render deploy hook URL and service status"
-                                exit 1
+                                echo "⚠️  Build will continue despite deployment failure"
+                                echo "🔧 Please fix the Render configuration and redeploy manually"
                             fi
                         '''
                     }
