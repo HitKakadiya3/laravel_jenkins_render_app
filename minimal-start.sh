@@ -22,6 +22,22 @@ rm -rf storage/framework/sessions/* 2>/dev/null || true
 rm -rf storage/framework/views/* 2>/dev/null || true
 rm -rf bootstrap/cache/* 2>/dev/null || true
 
+# Force clear any potential opcache
+php -r "if (function_exists('opcache_reset')) { opcache_reset(); echo 'OPCache cleared'; }"
+
+# Delete and recreate config cache to force reload
+rm -f bootstrap/cache/config.php
+rm -f bootstrap/cache/services.php
+rm -f bootstrap/cache/packages.php
+
+# Show actual config file contents
+echo "=== Config File Contents ==="
+echo "session.php driver line:"
+grep "'driver'" config/session.php || echo "Not found"
+echo "cache.php default line:"
+grep "'default'" config/cache.php || echo "Not found"
+echo "============================="
+
 # Test Laravel config
 echo "Testing Laravel configuration..."
 php -r "

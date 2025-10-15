@@ -4,16 +4,26 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 
+// Simple test route without any dependencies
+Route::get('/test', function () {
+    return 'Laravel is working! Time: ' . date('Y-m-d H:i:s');
+});
+
+// Static HTML test route 
+Route::get('/static', function () {
+    return '<!DOCTYPE html><html><head><title>Static Test</title></head><body><h1>Static HTML Working!</h1><p>Laravel routing works without sessions.</p></body></html>';
+});
+
 // Health check route - minimal dependencies
 Route::get('/health', function () {
     try {
         return response()->json([
             'status' => 'ok',
             'timestamp' => date('Y-m-d H:i:s'),
-            'app_name' => config('app.name', 'Laravel'),
-            'app_env' => config('app.env', 'unknown'),
+            'app_name' => 'Laravel Jenkins Render App',
             'php_version' => PHP_VERSION,
-            'laravel_version' => app()->version()
+            'laravel_version' => app()->version(),
+            'session_driver' => 'bypassed for testing'
         ]);
     } catch (Exception $e) {
         return response()->json([
@@ -25,15 +35,12 @@ Route::get('/health', function () {
     }
 });
 
-// Simple test route without any dependencies
-Route::get('/test', function () {
-    return 'Laravel is working! Time: ' . date('Y-m-d H:i:s');
-});
-
 // Public routes
 Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+    // Try to bypass session completely
+    return response('<h1>Welcome to Laravel!</h1><p>Application is running successfully.</p><p><a href="/test">Test Route</a> | <a href="/health">Health Check</a> | <a href="/static">Static Test</a></p>')
+        ->header('Content-Type', 'text/html');
+});
 
 // Authentication routes
 Route::middleware('guest')->group(function () {
